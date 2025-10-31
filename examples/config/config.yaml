@@ -1,0 +1,27 @@
+# Sample configuration file for zk-next
+# Place this file at ~/.config/zk-next/config.yaml
+
+# Path to your Zettelkasten notebook directory
+notebook_path: ~/Documents/notes
+
+# Template definitions
+# Each template has:
+#   - type: identifier for the template
+#   - template_file: ERB template file name (in ~/.config/zk-next/templates/)
+#   - filename_pattern: pattern for generated filenames (supports {type}, {date}, {year}, {month}, {id}, and metadata fields)
+#   - subdirectory: relative path from notebook_path where notes will be created (supports same patterns as filename_pattern)
+templates:
+  - type: default
+    template_file: default.erb
+    filename_pattern: "{type}-{date}.md"
+    subdirectory: ""
+
+  - type: journal
+    template_file: journal.erb
+    filename_pattern: "{date}-journal.md"
+    subdirectory: "journal/{year}"
+
+  - type: meeting
+    template_file: meeting.erb
+    filename_pattern: "meeting-{date}-{title}.md"
+    subdirectory: "meetings/{year}/{month}"

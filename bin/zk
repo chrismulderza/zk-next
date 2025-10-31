@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# zk-next CLI tool
+
+DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+
+COMMAND=$1
+
+shift
+
+case $COMMAND in
+
+  add)
+
+    echo "running ruby $DIR/../lib/cmd/add.rb $@"
+    ruby "$DIR/../lib/cmd/add.rb" "$@"
+
+    ;;
+
+  init)
+
+    ruby "$DIR/../lib/cmd/init.rb" "$@"
+
+    ;;
+
+  *)
+
+    echo "Usage: zk <command> [options]"
+
+    echo "Commands: add, init"
+
+    exit 1
+
+    ;;
+
+esac
