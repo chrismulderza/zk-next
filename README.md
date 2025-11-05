@@ -24,6 +24,22 @@ The configuration contains the path to the user's default Zettel notebook store,
 and the names of the default templates available. Default template files are
 stored in `$HOME/.config/zk-next/templates`.
 
+### Model
+
+Provisional data model for organising notes:
+
+Base Type: Document
+Attributes: - id: - title: - type: - path: - date:
+
+- Document Types:
+  - Note:
+  - Journal:
+  - Resource
+    - Bookmark
+    - Guide
+  - Contact
+  - Task
+
 ### Template files
 
 Template files are developed using Embedded Ruby (ERB), allowing for

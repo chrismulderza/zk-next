@@ -4,8 +4,10 @@
 require_relative '../config'
 require_relative '../indexer'
 require_relative '../models/note'
+require_relative '../utils'
 require 'erb'
 require 'fileutils'
+require 'ostruct'
 
 # Add command for creating new notes
 class AddCommand
@@ -30,32 +32,30 @@ class AddCommand
   end
 
   def find_template_file(notebook_path, template_filename)
-    local_file = File.join(notebook_path, '.zk', 'templates', template_filename)
-    global_file = File.join(Dir.home, '.config', 'zk-next', 'templates', template_filename)
-
-    return local_file if File.exist?(local_file)
-    return global_file if File.exist?(global_file)
-
-    puts "Template file not found: #{template_filename}"
-    puts 'Searched locations:'
-    puts "  #{local_file}"
-    puts "  #{global_file}"
-    exit 1
+    template_file = Utils.find_template_file(notebook_path, template_filename)
+    unless template_file
+      local_file = File.join(notebook_path, '.zk', 'templates', template_filename)
+      global_file = File.join(Dir.home, '.config', 'zk-next', 'templates', template_filename)
+      puts "Template file not found: #{template_filename}"
+      puts 'Searched locations:'
+      puts "  #{local_file}"
+      puts "  #{global_file}"
+      exit 1
+    end
+    template_file
   end
 
   def render_template(template_file, type)
     template = ERB.new(File.read(template_file))
-    date = Time.now.strftime('%Y-%m-%d')
-    year = Time.now.strftime('%Y')
-    month = Time.now.strftime('%m')
-    id = Time.now.to_i.to_s
-    template.result(binding)
+    vars = Utils.current_time_vars
+    vars['type'] = type
+    template.result(OpenStruct.new(vars).instance_eval { binding })
   end
 
   def create_note_file(config, template_config, type, content)
     variables = build_variables(type, content)
-    filename = interpolate_pattern(template_config['filename_pattern'], variables)
-    subdirectory = interpolate_pattern(template_config['subdirectory'], variables)
+    filename = Utils.interpolate_pattern(template_config['filename_pattern'], variables)
+    subdirectory = Utils.interpolate_pattern(template_config['subdirectory'], variables)
     target_dir = determine_target_dir(config['notebook_path'], subdirectory)
     FileUtils.mkdir_p(target_dir)
     filepath = File.join(target_dir, filename)
@@ -64,14 +64,8 @@ class AddCommand
   end
 
   def build_variables(type, content)
-    note_metadata = extract_metadata(content)
-    {
-      'type' => type,
-      'date' => Time.now.strftime('%Y-%m-%d'),
-      'year' => Time.now.strftime('%Y'),
-      'month' => Time.now.strftime('%m'),
-      'id' => Time.now.to_i.to_s
-    }.merge(note_metadata)
+    note_metadata, = Utils.parse_front_matter(content)
+    Utils.current_time_vars.merge('type' => type).merge(note_metadata)
   end
 
   def determine_target_dir(notebook_path, subdirectory)
@@ -82,27 +76,6 @@ class AddCommand
     note = Note.new(filepath)
     indexer = Indexer.new(config)
     indexer.index_note(note)
-  end
-
-  def extract_metadata(content)
-    return {} unless content.start_with?('---')
-
-    parts = content.split('---', 3)
-    return {} unless parts.size >= 3
-
-    metadata = {}
-    parts[1].scan(/^(\w+):\s*(.+)$/).each do |key, value|
-      metadata[key] = value.strip
-    end
-    metadata
-  end
-
-  def interpolate_pattern(pattern, variables)
-    result = pattern.dup
-    variables.each do |key, value|
-      result.gsub!("{#{key}}", value.to_s)
-    end
-    result
   end
 end
 

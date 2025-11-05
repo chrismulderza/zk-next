@@ -4,7 +4,7 @@ require 'yaml'
 
 # Configuration handling for zk-next
 class Config
-  CONFIG_DIR = File.join(Dir.home, '.config', 'zk-next')
+  CONFIG_DIR = File.join(ENV['HOME'], '.config', 'zk-next')
   CONFIG_FILE = File.join(CONFIG_DIR, 'config.yaml')
 
   def self.load

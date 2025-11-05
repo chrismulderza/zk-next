@@ -29,6 +29,7 @@
   mkdir -p test_add_dir
   cd test_add_dir
   ../bin/zk init
+  rm .zk/config.yaml
   export HOME="$PWD/home"
   mkdir -p "$HOME/.config/zk-next/templates"
   cat > "$HOME/.config/zk-next/templates/default.erb" << 'EOF'
@@ -39,11 +40,14 @@ type: default
 # <%= type %>
 Content
 EOF
-  cat > "$HOME/.config/zk-next/config.yaml" << 'EOF'
+   cat > "$HOME/.config/zk-next/config.yaml" << 'EOF'
 ---
 notebook_path: "."
 templates:
-- default
+- type: default
+  template_file: default.erb
+  filename_pattern: '{type}-{date}.md'
+  subdirectory: ''
 EOF
   run ruby ../lib/cmd/add.rb default
   [ "$status" -eq 0 ]
