@@ -54,14 +54,32 @@ path, relative to the notebook directory for each note.
 
 ### Components
 
-- **Main CLI tool:** `bin/zk` is a Bash script that routes to different command
+- **Main CLI tool:** `bin/zkn` is a Bash script that routes to different command
   implementations.
 - **Commands:**
   - all command implementations should be executable using `#!/usr/bin/env ruby`
     at the top of the file.
   - `lib/cmd/add.rb` - implements the `add` command in Ruby.
-- **Data Models:** `lib/models/note.rb` contains base class definition for the
-  default note. All other note types inherit from this base class.
+- **Data Models:** 
+  - `lib/models/note.rb` is the base note class definition for the
+  default note. This class extends `document.rb` which is an abstract class.
+  All other note types inherit from this base class.
+
+## Architecture Documentation
+
+For detailed information about the system architecture, design decisions, and extension points, see:
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Comprehensive architecture documentation including:
+  - System overview and component architecture
+  - Data flow diagrams
+  - Configuration system
+  - Extension points for adding new commands, document types, and templates
+  - Future architecture considerations
+
+- **[docs/ARCHITECTURE_DECISIONS.md](docs/ARCHITECTURE_DECISIONS.md)**: Architecture Decision Records (ADRs) documenting key design choices:
+  - Why certain technologies were chosen
+  - Trade-offs and consequences of architectural decisions
+  - Context for future architectural changes
 
 ## Directives
 
