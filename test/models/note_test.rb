@@ -15,7 +15,7 @@ class NoteTest < Minitest::Test
     file = Tempfile.new(['note', '.md'])
     file.write(content)
     file.close
-    note = Note.new(file.path)
+    note = Note.new(path: file.path)
     assert_equal '123', note.id
     assert_equal({'id' => 123, 'type' => 'general'}, note.metadata)
     assert_equal "\n# Title\nContent\n", note.content
@@ -26,7 +26,7 @@ class NoteTest < Minitest::Test
     file = Tempfile.new(['note', '.md'])
     file.write(content)
     file.close
-    note = Note.new(file.path)
+    note = Note.new(path: file.path)
     assert note.id
     assert_equal({}, note.metadata)
     assert_equal content, note.content

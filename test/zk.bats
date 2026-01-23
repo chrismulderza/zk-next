@@ -1,21 +1,21 @@
 #!/usr/bin/env bats
 
-@test "zk without args shows usage" {
-  run ./bin/zk
+@test "zkn without args shows usage" {
+  run ./bin/zkn
   [ "$status" -eq 1 ]
   [[ "$output" == *"Usage"* ]]
 }
 
-@test "zk unknown command" {
-  run ./bin/zk unknown
+@test "zkn unknown command" {
+  run ./bin/zkn unknown
   [ "$status" -eq 1 ]
   [[ "$output" == *"Usage"* ]]
 }
 
-@test "zk init" {
+@test "zkn init" {
   mkdir -p test_init_dir
   cd test_init_dir
-  run ../bin/zk init
+  run ../bin/zkn init
   [ "$status" -eq 0 ]
   [[ "$output" == *"Initialized"* ]]
   [ -d .zk ]
@@ -24,11 +24,11 @@
   rm -rf test_init_dir
 }
 
-@test "zk add" {
+@test "zkn add" {
   rm -rf test_add_dir
   mkdir -p test_add_dir
   cd test_add_dir
-  ../bin/zk init
+  ../bin/zkn init
   rm .zk/config.yaml
   export HOME="$PWD/home"
   mkdir -p "$HOME/.config/zk-next/templates"

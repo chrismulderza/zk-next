@@ -27,7 +27,7 @@ install:
 	mkdir -p $(INSTALL_DIR)
 	cp -r bin lib examples $(INSTALL_DIR)/
 	mkdir -p $(BIN_DIR)
-	ln -sf $(INSTALL_DIR)/bin/zk $(BIN_DIR)/zk
+	ln -sf $(INSTALL_DIR)/bin/zkn $(BIN_DIR)/zkn
 	@if [ ! -d "$(HOME)/.config/zk-next" ]; then \
 		mkdir -p $(HOME)/.config/zk-next/templates; \
 		cp examples/config/config.yaml $(HOME)/.config/zk-next/; \
@@ -37,7 +37,7 @@ install:
 		echo "Config directory $(HOME)/.config/zk-next already exists, skipping config installation"; \
 	fi
 	@echo "Installed zk-next to $(INSTALL_DIR)"
-	@echo "Symlink created: $(BIN_DIR)/zk"
+	@echo "Symlink created: $(BIN_DIR)/zkn"
 
 release:
 	@current_version=$$(cat $(VERSION_FILE)); \

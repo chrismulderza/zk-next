@@ -19,7 +19,17 @@ class Document
   # Initialise a new Document object. Pass a hash of options to the object to
   # initialise with an existing ID, or leave empty to generate a new ID.
   def initialize(opts = {})
-    @id = !opts.empty? && opts.key?(:id) ? opts[:id] : Document.generate_id
+    # Normalize opts to use symbols
+    opts = opts.transform_keys(&:to_sym) if opts.is_a?(Hash)
+    
+    @id = opts.key?(:id) ? opts[:id] : Document.generate_id
+    @path = opts[:path]
+    @title = opts[:title]
+    @type = opts[:type]
+    @date = opts[:date]
+    @content = opts[:content]
+    @metadata = opts[:metadata] || {}
+    @body = opts[:body]
   end
 
   def self.generate_id

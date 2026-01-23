@@ -5,7 +5,9 @@ require 'yaml'
 
 # Init command for initializing a new notebook
 class InitCommand
-  def run(*_args)
+  def run(*args)
+    return output_completion if args.first == '--completion'
+
     zk_dir = '.zk'
     Dir.mkdir(zk_dir) unless Dir.exist?(zk_dir)
 
@@ -28,6 +30,13 @@ class InitCommand
       puts "Initialized notebook in #{Dir.pwd}"
       puts 'Created .zk/config.yaml'
     end
+  end
+
+  private
+
+  def output_completion
+    # Init takes no arguments
+    puts ''
   end
 end
 

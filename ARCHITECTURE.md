@@ -58,6 +58,63 @@ graph TB
 - Simple case statement for command routing
 - Passes remaining arguments to command implementations
 - Provides usage information for unknown commands
+- Shell completion support with dynamic command discovery
+
+#### Shell Completion
+
+The CLI provides bash completion support that automatically discovers commands from the `lib/cmd/` directory. This ensures that new commands automatically appear in shell completion without manual updates.
+
+**Usage**:
+- Generate completion script: `zkn _completion` or `zkn completion`
+- Source for current session: `source <(zkn _completion)`
+- Install permanently: Add `source <(zkn _completion)` to `~/.bashrc` or `~/.zshrc`
+
+**How it works**:
+- The completion script dynamically scans `lib/cmd/` for `.rb` files
+- Command names are extracted from filenames (e.g., `add.rb` → `add`)
+- Completion candidates are generated using bash's `compgen` builtin
+- The completion function is registered with bash's `complete` builtin
+- **Command-driven completion**: Each command implements its own completion logic via `--completion` option
+- The bash completion script dynamically calls commands with `--completion` to get completion candidates
+
+**Completion Features**:
+
+1. **Command Name Completion**: Automatically discovers all commands from `lib/cmd/` directory
+2. **Option Completion**: Provides completion for common options (`--help`, `--version`) when typing options (starting with `--`)
+3. **Command-Specific Arguments**: Each command provides its own completions via `--completion` option
+   - `add` command: Returns template types from configuration
+   - `init` command: Returns empty (no arguments)
+4. **Fully Dynamic**: New commands automatically provide completion without modifying the bash script
+
+**Implementation Details**:
+- **Command Completion Interface**: Commands check for `--completion` as first argument and output space-separated candidates
+- **Bash Script**: Dynamically calls `ruby lib/cmd/{command}.rb --completion` to get completions
+- **Helper Script**: `lib/cmd/_completion_helper.rb` provides shared completion data (common options)
+- **Graceful Degradation**: Commands that don't implement `--completion` return empty completions
+- **Error Handling**: Completion failures are handled gracefully (empty completions)
+
+**Command Completion Pattern**:
+Each command in `lib/cmd/` should implement the `--completion` option:
+
+```ruby
+def run(*args)
+  return output_completion if args.first == '--completion'
+  # Normal command execution
+end
+
+private
+
+def output_completion
+  # Return space-separated completion candidates
+  puts candidates.join(' ')
+end
+```
+
+**Extending Completion for New Commands**:
+New commands automatically get completion support. To provide command-specific completions:
+1. Implement `--completion` option handling in the command's `run` method
+2. Add a private `output_completion` method that returns space-separated candidates
+3. No changes needed to the bash completion script - it automatically discovers and calls the command
 
 ### 2. Command Layer (`lib/cmd/`)
 
@@ -73,6 +130,7 @@ graph TB
 - Find and render template file
 - Create note file with proper naming and directory structure
 - Index the created note
+- Provide completion candidates via `--completion` option (template types from configuration)
 
 **Flow**:
 1. Load merged config (global + local)
@@ -89,6 +147,7 @@ graph TB
 - Initialize new notebook directory
 - Create `.zk` directory structure
 - Create default local configuration file
+- Provide completion candidates via `--completion` option (returns empty, no arguments)
 
 ### 3. Model Layer (`lib/models/`)
 
@@ -406,7 +465,18 @@ zk-next/
    
    class NewCommand
      def run(*args)
+       return output_completion if args.first == '--completion'
+       
        # Command logic
+     end
+     
+     private
+     
+     def output_completion
+       # Return space-separated completion candidates
+       # Example: puts 'arg1 arg2 arg3'
+       # Or empty if no arguments: puts ''
+       puts ''
      end
    end
    
@@ -421,6 +491,14 @@ zk-next/
    ```
 
 3. Add tests in `test/cmd/newcommand_test.rb`
+
+4. **Implement completion** (required):
+   - Add `--completion` option handling in `run` method
+   - Implement `output_completion` method that returns space-separated candidates
+   - Commands automatically appear in shell completion
+   - Completion is dynamically discovered - no bash script changes needed
+
+**Note**: The completion system automatically discovers all `.rb` files in `lib/cmd/` directory and calls them with `--completion` to get completion candidates. Commands that don't implement `--completion` will gracefully return no completions.
 
 ### Adding New Template Variables
 

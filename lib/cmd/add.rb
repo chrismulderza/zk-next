@@ -11,7 +11,10 @@ require 'ostruct'
 
 # Add command for creating new notes
 class AddCommand
-  def run(type, *_args)
+  def run(*args)
+    return output_completion if args.first == '--completion'
+
+    type = args.first || 'note'
     config = Config.load
     template_config = get_template_config(config, type)
     template_file = find_template_file(config['notebook_path'], template_config['template_file'])
@@ -23,6 +26,20 @@ class AddCommand
 
   private
 
+  def output_completion
+    begin
+      config = Config.load
+      templates = config['templates'] || []
+      return unless templates.is_a?(Array)
+
+      template_types = templates.map { |t| t['type'] }.compact.uniq.sort
+      puts template_types.join(' ')
+    rescue StandardError
+      # Fallback to default if config can't be loaded
+      puts 'note'
+    end
+  end
+
   def get_template_config(config, type)
     template_config = Config.get_template(config, type)
     return template_config if template_config
@@ -31,7 +48,7 @@ class AddCommand
     exit 1
   end
 
-  def find_template_file(notebook_path, template_filename)
+  def find_template_file(notebook_path, template_filename) # rubocop:disable Metrics/MethodLength
     template_file = Utils.find_template_file(notebook_path, template_filename)
     unless template_file
       local_file = File.join(notebook_path, '.zk', 'templates', template_filename)
@@ -73,7 +90,7 @@ class AddCommand
   end
 
   def index_note(config, filepath)
-    note = Note.new(filepath)
+    note = Note.new(path: filepath)
     indexer = Indexer.new(config)
     indexer.index_note(note)
   end

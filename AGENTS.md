@@ -57,6 +57,54 @@ See [ARCHITECTURE.md](ARCHITECTURE.md#architecture-documentation-maintenance) fo
 - Use external tools: gum, fzf, ripgrep, bat, sqlite
 - Update architecture documentation when making architectural changes
 
+## Adding New Commands
+
+When adding a new command to `lib/cmd/`, follow this checklist:
+
+1. **Create command file**: `lib/cmd/{command_name}.rb`
+   - Use executable Ruby script pattern (`#!/usr/bin/env ruby`)
+   - Include `frozen_string_literal: true`
+   - Implement command class with `run` method
+
+2. **Add route in `bin/zkn`**:
+   ```bash
+   commandname)
+     ruby "$DIR/../lib/cmd/commandname.rb" "$@"
+     ;;
+   ```
+
+3. **Implement completion** (REQUIRED):
+   - Add `--completion` option handling in `run` method:
+     ```ruby
+     def run(*args)
+       return output_completion if args.first == '--completion'
+       # Normal command logic
+     end
+     ```
+   - Implement `output_completion` private method:
+     ```ruby
+     private
+     
+     def output_completion
+       # Return space-separated completion candidates
+       # Example: puts 'arg1 arg2 arg3'
+       # Or empty if no arguments: puts ''
+       puts ''
+     end
+     ```
+   - Commands automatically appear in shell completion
+   - No bash script changes needed - completion is dynamically discovered
+
+4. **Add tests**: `test/cmd/{command_name}_test.rb`
+
+5. **Update documentation**: See [ARCHITECTURE.md](ARCHITECTURE.md#adding-new-commands) for details
+
+**Completion Requirements**:
+- All commands MUST implement `--completion` option
+- Commands with no arguments should return empty string (`puts ''`)
+- Commands with arguments should return space-separated candidates
+- Completion is automatically integrated - no manual bash script updates needed
+
 ## Commit Types
 - `feat`: New features/API changes
 - `fix`: Bug fixes

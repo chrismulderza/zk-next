@@ -7,7 +7,7 @@ class Config
   CONFIG_DIR = File.join(ENV['HOME'], '.config', 'zk-next')
   CONFIG_FILE = File.join(CONFIG_DIR, 'config.yaml')
 
-  def self.load
+  def self.load # rubocop:disable Metrics/MethodLength
     global_config = load_config(CONFIG_FILE)
     raise "Global config file not found: #{CONFIG_FILE}" unless global_config
 

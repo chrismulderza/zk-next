@@ -1,0 +1,1 @@
+Your job is to manage a release of this project. When called, you should increment the version in the VERSION file. You should make sure that all changes are committed. You must generate a proper commit message that summarises the changes for the commit. You must also update the CHANGELOG.md file. Finally you should tag the release with the version number.

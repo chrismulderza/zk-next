@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# zk-next CLI tool
+
+DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+
+COMMAND=$1
+
+shift
+
+case $COMMAND in
+  _completion|completion)
+    # Generate bash completion script
+    CMD_DIR="$DIR/../lib/cmd"
+    HELPER_SCRIPT="$DIR/../lib/cmd/_completion_helper.rb"
+    echo "# zk-next bash completion"
+    echo "_zkn() {"
+    echo "  local cur prev words cword"
+    echo "  COMPREPLY=()"
+    echo "  cur=\"\${COMP_WORDS[COMP_CWORD]}\""
+    echo "  prev=\"\${COMP_WORDS[COMP_CWORD-1]}\""
+    echo ""
+    echo "  # If completing the first word (command name), list all commands"
+    echo "  if [ \$COMP_CWORD -eq 1 ]; then"
+    echo "    # Dynamically discover commands from lib/cmd/ directory"
+    echo "    local commands"
+    echo "    commands=\$(find \"$CMD_DIR\" -name '*.rb' -type f ! -name '_completion_helper.rb' -exec basename {} .rb \\;)"
+    echo "    COMPREPLY=(\$(compgen -W \"\$commands\" -- \"\$cur\"))"
+    echo "    return 0"
+    echo "  fi"
+    echo ""
+    echo "  # Check if completing an option (starts with --)"
+    echo "  if [[ \"\$cur\" == --* ]]; then"
+    echo "    # Common options available for all commands"
+    echo "    local common_opts"
+    echo "    common_opts=\$(ruby \"$HELPER_SCRIPT\" common_options 2>/dev/null || echo '--help --version')"
+    echo "    COMPREPLY=(\$(compgen -W \"\$common_opts\" -- \"\$cur\"))"
+    echo "    return 0"
+    echo "  fi"
+    echo ""
+    echo "  # Command-specific argument completions (dynamically from commands)"
+    echo "  local cmd=\"\${COMP_WORDS[1]}\""
+    echo "  if [ -n \"\$cmd\" ] && [ \$COMP_CWORD -gt 1 ]; then"
+    echo "    # Dynamically get completions from command"
+    echo "    local completions"
+    echo "    completions=\$(ruby \"$CMD_DIR/\${cmd}.rb\" --completion 2>/dev/null)"
+    echo "    if [ -n \"\$completions\" ]; then"
+    echo "      COMPREPLY=(\$(compgen -W \"\$completions\" -- \"\$cur\"))"
+    echo "      return 0"
+    echo "    fi"
+    echo "  fi"
+    echo "}"
+    echo "complete -F _zkn zkn"
+    ;;
+  add)
+    echo "running ruby $DIR/../lib/cmd/add.rb $@"
+    ruby "$DIR/../lib/cmd/add.rb" "$@"
+    ;;
+  init)
+    ruby "$DIR/../lib/cmd/init.rb" "$@"
+    ;;
+  *)
+    echo "Usage: zkn <command> [options]"
+    echo "Commands: add, init"
+    exit 1
+    ;;
+esac

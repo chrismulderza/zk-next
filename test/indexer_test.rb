@@ -26,7 +26,7 @@ class IndexerTest < Minitest::Test
     EOF
     note_path = File.join(@temp_dir, 'test-note.md')
     File.write(note_path, content)
-    note = Note.new(note_path)
+    note = Note.new(path: note_path)
     @indexer.index_note(note)
     db = SQLite3::Database.new(File.join(@temp_dir, '.zk', 'index.db'))
     result = db.execute('SELECT id, path, metadata FROM notes WHERE id = ?', ['123'])
@@ -47,7 +47,7 @@ class IndexerTest < Minitest::Test
     EOF
     note_path = File.join(@temp_dir, 'test-note.md')
     File.write(note_path, content)
-    note = Note.new(note_path)
+    note = Note.new(path: note_path)
     @indexer.index_note(note)
     updated_content = <<~EOF
       ---
@@ -57,7 +57,7 @@ class IndexerTest < Minitest::Test
       # Updated
     EOF
     File.write(note_path, updated_content)
-    updated_note = Note.new(note_path)
+    updated_note = Note.new(path: note_path)
     @indexer.index_note(updated_note)
     db = SQLite3::Database.new(File.join(@temp_dir, '.zk', 'index.db'))
     result = db.execute('SELECT id, metadata FROM notes WHERE id = ?', ['456'])
