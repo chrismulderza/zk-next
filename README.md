@@ -45,12 +45,33 @@ Attributes: - id: - title: - type: - path: - date:
 Template files are developed using Embedded Ruby (ERB), allowing for
 placeholders to be replaced in the YAML front matter, and the body of the note.
 
+Templates can include a special `config` attribute in the front matter to override
+the default filename pattern. The `config.path` attribute specifies a custom filepath
+pattern that will be used when creating notes of that type. The `config` attribute is
+automatically removed from the final note file.
+
+Example template with config.path:
+```yaml
+---
+id: <%= id %>
+type: journal
+date: <%= date %>
+config:
+    path: journal/<%= date %>.md
+---
+```
+
 ### Indexing
 
 `zk-next` provides the capability for notes to be indexed into a Sqlite
 database. The indexer extracts metadata contained in the YAML front matter of a
 note, and inserts this into a Sqlite table along with a unique ID and the file
 path, relative to the notebook directory for each note.
+
+The indexer uses SQLite FTS5 (Full-Text Search) to enable fast full-text
+searching across note titles, filenames, and body content. The FTS index is
+automatically maintained through database triggers, ensuring search results
+stay synchronized with note updates.
 
 ### Components
 

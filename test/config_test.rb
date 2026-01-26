@@ -100,4 +100,187 @@ class ConfigTest < Minitest::Test
     template = Config.get_template(config, 'nonexistent')
     assert_nil template
   end
+
+  def test_load_with_invalid_yaml_in_global_config
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    File.write(@global_config_file, 'invalid: yaml: content: [unclosed')
+    Dir.chdir(@temp_dir) do
+      assert_raises(Psych::SyntaxError) do
+        Config.load
+      end
+    end
+  end
+
+  def test_load_with_invalid_yaml_in_local_config
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    global_config = { 'notebook_path' => @temp_dir, 'templates' => ['default'] }
+    File.write(@global_config_file, global_config.to_yaml)
+    Dir.chdir(@temp_dir) do
+      FileUtils.mkdir_p('.zk')
+      File.write('.zk/config.yaml', 'invalid: yaml: [unclosed')
+      assert_raises(Psych::SyntaxError) do
+        Config.load
+      end
+    end
+  end
+
+  def test_load_with_missing_notebook_path_in_global_config
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    config_content = { 'templates' => ['default'] }
+    File.write(@global_config_file, config_content.to_yaml)
+    Dir.chdir(@temp_dir) do
+      # Missing notebook_path should raise an error when trying to expand
+      assert_raises(TypeError) do
+        Config.load
+      end
+    end
+  end
+
+  def test_load_expands_relative_notebook_path
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    relative_path = '../relative-notebook'
+    config_content = { 'notebook_path' => relative_path, 'templates' => ['default'] }
+    File.write(@global_config_file, config_content.to_yaml)
+    Dir.chdir(@temp_dir) do
+      config = Config.load
+      # Should expand to absolute path
+      assert File.expand_path(relative_path, @temp_dir) == config['notebook_path'] ||
+             File.expand_path(relative_path) == config['notebook_path']
+    end
+  end
+
+  def test_get_template_with_string_array_old_format
+    config = {
+      'templates' => ['note', 'journal', 'meeting']
+    }
+    # Old format - should return nil since templates is not array of hashes
+    template = Config.get_template(config, 'note')
+    assert_nil template
+  end
+
+  def test_get_template_with_empty_templates_array
+    config = { 'templates' => [] }
+    template = Config.get_template(config, 'any')
+    assert_nil template
+  end
+
+  def test_get_template_with_nil_templates
+    config = { 'templates' => nil }
+    template = Config.get_template(config, 'any')
+    assert_nil template
+  end
+
+  def test_get_template_with_non_array_templates
+    config = { 'templates' => 'not-an-array' }
+    template = Config.get_template(config, 'any')
+    assert_nil template
+  end
+
+  def test_get_template_with_non_hash_items
+    config = {
+      'templates' => [
+        { 'type' => 'valid' },
+        'invalid-string-item',
+        { 'type' => 'another-valid' }
+      ]
+    }
+    # Should find valid templates
+    template1 = Config.get_template(config, 'valid')
+    assert_equal 'valid', template1['type']
+    
+    template2 = Config.get_template(config, 'another-valid')
+    assert_equal 'another-valid', template2['type']
+  end
+
+  def test_get_template_with_missing_type
+    config = {
+      'templates' => [
+        { 'template_file' => 'missing-type.erb' }
+      ]
+    }
+    # Template without type should not be findable by type
+    template = Config.get_template(config, 'missing-type')
+    assert_nil template
+  end
+
+  def test_normalize_template_with_all_defaults
+    template = { 'type' => 'test' }
+    normalized = Config.normalize_template(template)
+    assert_equal 'test', normalized['type']
+    assert_equal 'test.erb', normalized['template_file']
+    assert_equal '{type}-{date}.md', normalized['filename_pattern']
+    assert_equal '', normalized['subdirectory']
+  end
+
+  def test_normalize_template_with_partial_overrides
+    template = {
+      'type' => 'custom',
+      'template_file' => 'custom-template.erb',
+      # filename_pattern and subdirectory use defaults
+    }
+    normalized = Config.normalize_template(template)
+    assert_equal 'custom', normalized['type']
+    assert_equal 'custom-template.erb', normalized['template_file']
+    assert_equal '{type}-{date}.md', normalized['filename_pattern']
+    assert_equal '', normalized['subdirectory']
+  end
+
+  def test_normalize_template_with_all_overrides
+    template = {
+      'type' => 'full',
+      'template_file' => 'full.erb',
+      'filename_pattern' => '{id}-{type}.md',
+      'subdirectory' => 'custom/path'
+    }
+    normalized = Config.normalize_template(template)
+    assert_equal 'full', normalized['type']
+    assert_equal 'full.erb', normalized['template_file']
+    assert_equal '{id}-{type}.md', normalized['filename_pattern']
+    assert_equal 'custom/path', normalized['subdirectory']
+  end
+
+  def test_load_expands_notebook_path_to_absolute
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    absolute_path = File.expand_path(@temp_dir)
+    config_content = { 'notebook_path' => absolute_path, 'templates' => ['default'] }
+    File.write(@global_config_file, config_content.to_yaml)
+    Dir.chdir(@temp_dir) do
+      config = Config.load
+      assert_equal absolute_path, config['notebook_path']
+    end
+  end
+
+  def test_load_merges_nested_structures_shallowly
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    global_config = {
+      'notebook_path' => @temp_dir,
+      'templates' => [
+        { 'type' => 'global-template', 'template_file' => 'global.erb' }
+      ],
+      'other_key' => 'global-value'
+    }
+    File.write(@global_config_file, global_config.to_yaml)
+    Dir.chdir(@temp_dir) do
+      FileUtils.mkdir_p('.zk')
+      local_config = {
+        'templates' => [
+          { 'type' => 'local-template', 'template_file' => 'local.erb' }
+        ],
+        'other_key' => 'local-value'
+      }
+      File.write('.zk/config.yaml', local_config.to_yaml)
+      config = Config.load
+      # Templates array should be replaced, not merged
+      assert_equal 1, config['templates'].length
+      assert_equal 'local-template', config['templates'].first['type']
+      # Other keys should be merged
+      assert_equal 'local-value', config['other_key']
+    end
+  end
 end

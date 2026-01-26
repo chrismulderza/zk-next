@@ -13,7 +13,12 @@ build:
 
 test:
 	@echo "Running tests..."
-	ruby -Ilib test/models/note_test.rb
+	@for test_file in test/*_test.rb test/**/*_test.rb; do \
+		if [ -f "$$test_file" ]; then \
+			echo "Running $$test_file..."; \
+			ruby -Ilib "$$test_file" || exit 1; \
+		fi; \
+	done
 	@if command -v bats >/dev/null 2>&1; then \
 		bats test/zk.bats; \
 	else \

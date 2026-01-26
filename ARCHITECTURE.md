@@ -128,7 +128,10 @@ New commands automatically get completion support. To provide command-specific c
 - Load configuration
 - Resolve template configuration
 - Find and render template file
-- Create note file with proper naming and directory structure
+- Parse template front matter for `config.path` override
+- Create note file with proper naming and directory structure (using config.path if present)
+- Remove `config` attribute from output file
+- Reconstruct content using CommonMarker document objects
 - Index the created note
 - Provide completion candidates via `--completion` option (template types from configuration)
 
@@ -137,9 +140,20 @@ New commands automatically get completion support. To provide command-specific c
 2. Get template configuration for note type
 3. Find template file (local-first, fallback to global)
 4. Render template with ERB variables
-5. Generate filename from pattern
-6. Create file in appropriate subdirectory
-7. Index note in SQLite database
+5. Parse front matter to check for `config.path` override
+6. If `config.path` exists:
+   - Use it as filepath (with variable interpolation)
+   - Remove `config` attribute from metadata
+   - Reconstruct content using CommonMarker
+7. Otherwise, generate filename from pattern
+8. Create file in appropriate subdirectory
+9. Index note in SQLite database
+
+**Template Config Override**:
+Templates can include a `config.path` attribute in front matter to override the default
+filename pattern. When present, this path is used instead of the configured `filename_pattern`
+and `subdirectory`. The `config` attribute is automatically removed from the final output file.
+The path supports variable interpolation using metadata fields and time variables.
 
 #### InitCommand (`lib/cmd/init.rb`)
 
@@ -249,6 +263,12 @@ CREATE TABLE notes (
 - **`parse_front_matter(content)`**: Parses YAML front matter from Markdown using CommonMarker
   - Returns `[metadata_hash, body_content]`
   - Handles front matter delimiters (`---`)
+
+**Markdown Construction**:
+- Always use CommonMarker to construct markdown documents programmatically
+- Parse content with CommonMarker to validate and format
+- Use CommonMarker's document objects rather than string concatenation
+- This ensures proper formatting and consistency with CommonMark standards
   
 - **`current_time_vars`**: Returns hash of time-based template variables
   - `date`: YYYY-MM-DD format

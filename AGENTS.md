@@ -3,12 +3,21 @@
 Quick reference for AI coding agents working in this repository.
 
 ## Build/Test Commands
-- **All tests:** `make test`
+- **All tests:** `make test` - Runs all Ruby unit tests and shell script tests
 - **Single Ruby test:** `ruby -Ilib test/models/note_test.rb`
 - **Single test file with test method:** `ruby -Ilib test/cmd/add_test.rb -n test_run_creates_note`
 - **Shell tests:** `bats test/zk.bats`
 - **Ruby lint:** `rubocop lib/`
 - **Bash lint:** `shellcheck bin/zk`
+
+### Test Target Maintenance
+
+The `make test` target automatically discovers and runs all test files matching the pattern `test/**/*_test.rb`. When adding new test files:
+
+1. **Follow naming convention**: Test files must be named `*_test.rb` and placed in the `test/` directory (or subdirectories)
+2. **Automatic discovery**: The Makefile uses a `for` loop to find all test files - no manual updates needed
+3. **Test structure**: Tests should follow the existing pattern using Minitest
+4. **Verification**: After adding tests, run `make test` to ensure they execute correctly
 
 ## Code Style Guidelines
 - **Ruby:** CamelCase classes, snake_case methods/variables, `require_relative` for local files, `require` for external. Use `frozen_string_literal: true`
@@ -19,6 +28,7 @@ Quick reference for AI coding agents working in this repository.
 - **Comments:** Comment classes/functions, avoid inline comments
 - **Formatting:** Follow Rubocop standards, consistent indentation
 - **Testing:** Use Minitest for Ruby unit tests, bats for shell script testing
+- **Markdown Construction:** Always use CommonMarker library to construct markdown documents programmatically. Avoid creating markdown by concatenating strings. Parse content with CommonMarker to validate and format, then use CommonMarker's document objects and `to_commonmark` method for output.
 
 ## Project Overview
 `zk-next` is a CLI tool for Zettelkasten note management using CommonMark Markdown with YAML front matter. Uses ERB templates, SQLite indexing.
@@ -96,6 +106,9 @@ When adding a new command to `lib/cmd/`, follow this checklist:
    - No bash script changes needed - completion is dynamically discovered
 
 4. **Add tests**: `test/cmd/{command_name}_test.rb`
+   - Test files are automatically discovered by `make test` (no Makefile update needed)
+   - Follow naming convention: `*_test.rb`
+   - Use Minitest framework
 
 5. **Update documentation**: See [ARCHITECTURE.md](ARCHITECTURE.md#adding-new-commands) for details
 
