@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Renamed default.erb template to note.erb to align with 'note' type and resolve naming ambiguity
+- Fixed Makefile bug: corrected template path from lib/defaults/ to lib/templates/
+- Updated all code, tests, examples, and documentation to reference note.erb
+
 ## 0.2.2
 
 - Enhanced CLI help system: added `--help` and `-h` flags support for all commands
