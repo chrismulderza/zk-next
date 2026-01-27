@@ -8,6 +8,10 @@ class ConfigTest < Minitest::Test
     @temp_home = Dir.mktmpdir
     @temp_dir = Dir.mktmpdir
     @original_pwd = Dir.pwd
+    @original_home = ENV['HOME']
+    @original_notebook_path = ENV['ZKN_NOTEBOOK_PATH']
+    ENV['HOME'] = @temp_home
+    ENV.delete('ZKN_NOTEBOOK_PATH')
     @global_config_file = File.join(@temp_home, '.config', 'zk-next', 'config.yaml')
     @original_config_file = Config::CONFIG_FILE
     Config.send(:remove_const, :CONFIG_FILE)
@@ -18,6 +22,12 @@ class ConfigTest < Minitest::Test
     FileUtils.rm_rf(@temp_home)
     FileUtils.rm_rf(@temp_dir)
     Dir.chdir(@original_pwd)
+    ENV['HOME'] = @original_home if @original_home
+    if @original_notebook_path
+      ENV['ZKN_NOTEBOOK_PATH'] = @original_notebook_path
+    else
+      ENV.delete('ZKN_NOTEBOOK_PATH')
+    end
     Config.send(:remove_const, :CONFIG_FILE)
     Config.const_set(:CONFIG_FILE, @original_config_file)
   end
@@ -44,18 +54,23 @@ class ConfigTest < Minitest::Test
       local_config = { 'templates' => ['custom'], 'local_key' => 'local' }
       File.write('.zk/config.yaml', local_config.to_yaml)
       config = Config.load
-      assert_equal @temp_dir, config['notebook_path']
+      # Local config found via CWD should set notebook_path to CWD
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(@temp_dir), File.realpath(config['notebook_path'])
       assert_equal ['custom'], config['templates']
       assert_equal 'global', config['global_key']
       assert_equal 'local', config['local_key']
     end
   end
 
-  def test_load_raises_when_no_global_config
+  def test_load_raises_when_no_config_found
     Dir.chdir(@temp_dir) do
-      assert_raises(RuntimeError) do
+      # No config anywhere should raise error
+      error = assert_raises(RuntimeError) do
         Config.load
       end
+      assert_match(/No config file found/, error.message)
+      assert_match(/Searched locations/, error.message)
     end
   end
 
@@ -132,8 +147,8 @@ class ConfigTest < Minitest::Test
     config_content = { 'templates' => ['default'] }
     File.write(@global_config_file, config_content.to_yaml)
     Dir.chdir(@temp_dir) do
-      # Missing notebook_path should raise an error when trying to expand
-      assert_raises(TypeError) do
+      # Missing notebook_path in global config should raise an error
+      assert_raises(RuntimeError) do
         Config.load
       end
     end
@@ -276,11 +291,167 @@ class ConfigTest < Minitest::Test
       }
       File.write('.zk/config.yaml', local_config.to_yaml)
       config = Config.load
+      # Local config found via CWD, so notebook_path should be CWD
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(@temp_dir), File.realpath(config['notebook_path'])
       # Templates array should be replaced, not merged
       assert_equal 1, config['templates'].length
       assert_equal 'local-template', config['templates'].first['type']
       # Other keys should be merged
       assert_equal 'local-value', config['other_key']
     end
+  end
+
+  def test_load_finds_config_via_cwd
+    Dir.chdir(@temp_dir) do
+      FileUtils.mkdir_p('.zk')
+      local_config = {
+        'templates' => [
+          { 'type' => 'note', 'template_file' => 'note.erb' }
+        ]
+      }
+      File.write('.zk/config.yaml', local_config.to_yaml)
+      config = Config.load
+      # Should find config in CWD and set notebook_path to CWD
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(@temp_dir), File.realpath(config['notebook_path'])
+      assert_equal 1, config['templates'].length
+      assert_equal 'note', config['templates'].first['type']
+    end
+  end
+
+  def test_load_finds_config_via_directory_walk
+    # Create notebook in parent directory
+    notebook_dir = File.join(@temp_home, 'notebook')
+    FileUtils.mkdir_p(notebook_dir)
+    FileUtils.mkdir_p(File.join(notebook_dir, '.zk'))
+    local_config = {
+      'templates' => [
+        { 'type' => 'note', 'template_file' => 'note.erb' }
+      ]
+    }
+    File.write(File.join(notebook_dir, '.zk', 'config.yaml'), local_config.to_yaml)
+    
+    # Create subdirectory and run from there
+    subdir = File.join(notebook_dir, 'subdir', 'deep')
+    FileUtils.mkdir_p(subdir)
+    Dir.chdir(subdir) do
+      config = Config.load
+      # Should find config by walking up to notebook_dir
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(notebook_dir), File.realpath(config['notebook_path'])
+      assert_equal 1, config['templates'].length
+    end
+  end
+
+  def test_load_finds_config_via_env_var
+    notebook_dir = File.join(@temp_home, 'notebook')
+    FileUtils.mkdir_p(notebook_dir)
+    FileUtils.mkdir_p(File.join(notebook_dir, '.zk'))
+    local_config = {
+      'templates' => [
+        { 'type' => 'note', 'template_file' => 'note.erb' }
+      ]
+    }
+    File.write(File.join(notebook_dir, '.zk', 'config.yaml'), local_config.to_yaml)
+    
+    ENV['ZKN_NOTEBOOK_PATH'] = notebook_dir
+    Dir.chdir(@temp_dir) do
+      config = Config.load
+      # Should find config via env var
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(notebook_dir), File.realpath(config['notebook_path'])
+      assert_equal 1, config['templates'].length
+    end
+  ensure
+    ENV.delete('ZKN_NOTEBOOK_PATH')
+  end
+
+  def test_load_merges_local_with_global_when_found_via_cwd
+    config_dir = File.join(@temp_home, '.config', 'zk-next')
+    FileUtils.mkdir_p(config_dir)
+    global_config = {
+      'templates' => [
+        { 'type' => 'global-template', 'template_file' => 'global.erb' }
+      ],
+      'global_key' => 'global-value'
+    }
+    File.write(@global_config_file, global_config.to_yaml)
+    
+    Dir.chdir(@temp_dir) do
+      FileUtils.mkdir_p('.zk')
+      local_config = {
+        'templates' => [
+          { 'type' => 'local-template', 'template_file' => 'local.erb' }
+        ],
+        'local_key' => 'local-value'
+      }
+      File.write('.zk/config.yaml', local_config.to_yaml)
+      config = Config.load
+      # Should merge: local overrides global
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(@temp_dir), File.realpath(config['notebook_path'])
+      assert_equal 1, config['templates'].length
+      assert_equal 'local-template', config['templates'].first['type']
+      assert_equal 'global-value', config['global_key']
+      assert_equal 'local-value', config['local_key']
+    end
+  end
+
+  def test_load_stops_walk_at_home_directory
+    # Create .zk in home directory
+    FileUtils.mkdir_p(File.join(@temp_home, '.zk'))
+    home_config = {
+      'templates' => [
+        { 'type' => 'home-template', 'template_file' => 'home.erb' }
+      ]
+    }
+    File.write(File.join(@temp_home, '.zk', 'config.yaml'), home_config.to_yaml)
+    
+    # Create a subdirectory within home (not outside)
+    subdir = File.join(@temp_home, 'subdir', 'deep')
+    FileUtils.mkdir_p(subdir)
+    
+    Dir.chdir(subdir) do
+      # Should find config in home directory by walking up
+      config = Config.load
+      # Use realpath to resolve symlinks (macOS /var -> /private/var)
+      assert_equal File.realpath(@temp_home), File.realpath(config['notebook_path'])
+      assert_equal 1, config['templates'].length
+      assert_equal 'home-template', config['templates'].first['type']
+    end
+  end
+
+  def test_find_zk_directory_walks_up_tree
+    notebook_dir = File.join(@temp_home, 'notebook')
+    FileUtils.mkdir_p(File.join(notebook_dir, '.zk'))
+    
+    subdir = File.join(notebook_dir, 'subdir', 'deep', 'nested')
+    FileUtils.mkdir_p(subdir)
+    
+    found = Config.find_zk_directory(subdir)
+    assert_equal File.join(notebook_dir, '.zk'), found
+  end
+
+  def test_find_zk_directory_returns_nil_when_not_found
+    subdir = File.join(@temp_dir, 'subdir', 'deep')
+    FileUtils.mkdir_p(subdir)
+    
+    found = Config.find_zk_directory(subdir)
+    assert_nil found
+  end
+
+  def test_find_zk_directory_stops_at_home
+    # Create .zk in a directory that would be above home if we kept walking
+    # But we should stop at home
+    FileUtils.mkdir_p(File.join(@temp_home, '.zk'))
+    
+    # Start from a subdirectory
+    subdir = File.join(@temp_home, 'subdir')
+    FileUtils.mkdir_p(subdir)
+    
+    found = Config.find_zk_directory(subdir)
+    # Should find .zk in home
+    assert_equal File.join(@temp_home, '.zk'), found
   end
 end
