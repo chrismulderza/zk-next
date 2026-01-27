@@ -22,6 +22,9 @@ COMMANDS:
     init                Initialize a new notebook directory
                         Creates .zk directory and default config.yaml
 
+    reindex             Re-index all markdown files in the notebook
+                        Scans notebook directory recursively and updates SQLite index
+
     completion          Generate bash completion script
     _completion         Alias for 'completion' command
 
@@ -43,6 +46,7 @@ EXAMPLES:
                         Create a note with title and tags (no prompts)
     zkn --debug add     Create a note with debug output
     zkn init            Initialize notebook in current directory
+    zkn reindex         Re-index all notes in the notebook
     zkn completion      Generate and source completion script
 
 SHELL COMPLETION:
@@ -133,9 +137,19 @@ case $COMMAND in
     fi
     ruby "$DIR/../lib/cmd/init.rb" "$@"
     ;;
+  reindex)
+    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+      show_help
+      exit 0
+    fi
+    if [ "$DEBUG_MODE" -eq 1 ]; then
+      export ZKN_DEBUG=1
+    fi
+    ruby "$DIR/../lib/cmd/reindex.rb" "$@"
+    ;;
   *)
     echo "Usage: zkn <command> [options]"
-    echo "Commands: add, init, completion"
+    echo "Commands: add, init, reindex, completion"
     echo "Run 'zkn --help' for more information."
     exit 1
     ;;
