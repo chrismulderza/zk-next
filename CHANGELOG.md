@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.4
+
+- Standardized ID generation: unified ID generation strategy to use 8-character hex IDs for all notes (new and loaded)
+- Centralized ID generation: created shared `Utils.generate_id` method used by both `Document.generate_id` and `Utils.current_time_vars`
+- Added configurable alias pattern: notes now automatically generate aliases using configurable pattern (default: `{type}> {date}: {title}`)
+- Added `slugify` template function: opt-in filename normalization function for ERB templates with configurable replacement character
+- Added date format configuration: configurable date format (Ruby strftime) for consistent date formatting across notes
+- Enhanced template system: improved YAML front matter handling with proper quoting requirements
+- Comprehensive test coverage: added extensive tests for new features including alias generation, slugify, and configuration options
+- Updated documentation: enhanced README.md and ARCHITECTURE.md with new configuration options and features
+
 ## 0.2.3
 
 - Renamed default.erb template to note.erb to align with 'note' type and resolve naming ambiguity

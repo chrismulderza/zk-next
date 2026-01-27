@@ -1,11 +1,13 @@
 ---
-id: <%= id %>
+id: "<%= id %>"
 type: meeting
-date: <%= date %>
-title: <%= title %>
-alias: <%= alias %>
+date: "<%= date %>"
+title: "<%= title %>"
+aliases: "<%= aliases %>"
 tags: <%= tags %>
 config:
+    path: "<%= id %>-<%= slugify(title) %>.md"
+    subdirectory: "meetings/<%= year %>/<%= month %>"
 ---
 
 # Meeting: <%= title %>

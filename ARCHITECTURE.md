@@ -155,6 +155,44 @@ filename pattern. When present, this path is used instead of the configured `fil
 and `subdirectory`. The `config` attribute is automatically removed from the final output file.
 The path supports variable interpolation using metadata fields and time variables.
 
+**Important**: The `config.path` value **must be quoted** in the template to prevent
+YAML parsing errors when the interpolated values contain special characters (e.g., `:`, `#`):
+```yaml
+config:
+    path: "<%= id %>-<%= title %>.md"  # ✓ Correct: quoted
+    path: <%= id %>-<%= title %>.md     # ✗ Wrong: unquoted (will fail with special chars)
+```
+
+**Filename Normalization with `slugify`**:
+Templates have access to a `slugify` function that can be used to normalize strings for
+filenames. The `slugify` function converts text to lowercase, replaces spaces and special
+characters with a configurable replacement character (default: `-` hyphen), and cleans up
+the result. This is useful for creating filesystem-friendly and URL-safe filenames:
+
+```yaml
+config:
+    path: "<%= slugify(id) %>-<%= slugify(title) %>.md"
+```
+
+The `slugify` function is available in all ERB templates and can be called on any variable
+or string value. The replacement character can be configured in `config.yaml` via the
+`slugify_replacement` option (default: `'-'`). It preserves hyphens and existing underscores,
+making it suitable for normalizing user-provided titles or other metadata that may contain
+special characters.
+
+**Date Format Configuration**:
+The date format used in templates is configurable via the `date_format` option in `config.yaml`.
+This uses Ruby's standard `strftime` format strings (default: `'%Y-%m-%d'` for ISO 8601).
+The configured format affects the `date` variable available in ERB templates.
+
+**Alias Pattern Configuration**:
+Aliases are automatically generated for each note using a configurable pattern. The pattern
+supports variable interpolation (similar to filename patterns) and defaults to
+`'{type}> {date}: {title}'` (e.g., "note> 2024-01-15: Meeting Notes"). This format is
+designed to aid searching with tools like `fzf` or `grep`. The pattern can be customized
+via the `alias_pattern` option in `config.yaml` and supports variables: `{type}`, `{date}`,
+`{title}`, `{year}`, `{month}`, and `{id}`.
+
 #### InitCommand (`lib/cmd/init.rb`)
 
 **Responsibilities**:
@@ -270,22 +308,37 @@ CREATE TABLE notes (
 - Use CommonMarker's document objects rather than string concatenation
 - This ensures proper formatting and consistency with CommonMark standards
   
-- **`current_time_vars`**: Returns hash of time-based template variables
-  - `date`: YYYY-MM-DD format
+- **`current_time_vars(date_format: nil)`**: Returns hash of time-based template variables
+  - `date`: Formatted using configured date format (default: `'%Y-%m-%d'` ISO 8601)
   - `year`: 4-digit year
   - `month`: 2-digit month
-  - `id`: Unix timestamp as string
+  - `id`: 8-character hexadecimal ID (generated using SecureRandom via `Utils.generate_id`)
+  - Date format can be configured via `date_format` in config.yaml
+
+- **Alias Generation**: Aliases are automatically generated in `AddCommand.render_template` using
+  the configured `alias_pattern` (default: `'{type}> {date}: {title}'`). The pattern supports
+  variable interpolation with all available template variables. Aliases are useful for searching
+  with tools like `fzf` or `grep`.
 
 - **`interpolate_pattern(pattern, variables)`**: Replaces `{key}` placeholders in patterns
   - Used for filename patterns and subdirectory paths
   - Supports metadata fields as variables
+
+- **`slugify(text, replacement_char: '-')`**: Normalizes strings for use in filenames
+  - Converts to lowercase
+  - Replaces spaces and special characters with replacement character (default: `-` hyphen)
+  - Collapses multiple consecutive replacement characters
+  - Removes leading/trailing replacement characters
+  - Preserves hyphens and existing underscores
+  - Available in ERB templates via the binding context
+  - Replacement character is configurable via `slugify_replacement` in config.yaml
 
 - **`find_template_file(notebook_path, template_filename)`**: Template resolution
   - Checks local: `.zk/templates/{filename}`
   - Falls back to global: `~/.config/zk-next/templates/{filename}`
   - Returns first found path or nil
 
-- **`generate_id`**: Generates 6-character hex ID (alternative to Document.generate_id)
+- **`generate_id`**: Generates 8-character hex ID using SecureRandom. This is the shared ID generation method used by both `Document.generate_id` and `Utils.current_time_vars` to ensure consistent ID generation across all note creation paths.
 
 ## Data Flow
 
@@ -386,6 +439,14 @@ flowchart TD
 - `notebook_path` is always expanded to absolute path
 - Missing local config uses global config only
 
+### Global Configuration Options
+
+- **`notebook_path`**: Path to the Zettelkasten notebook directory
+- **`date_format`**: Ruby strftime format string for date formatting (default: `'%Y-%m-%d'` ISO 8601)
+- **`slugify_replacement`**: Character to use for replacing spaces/special chars in slugify (default: `'-'` hyphen)
+- **`alias_pattern`**: Pattern for generating note aliases (default: `'{type}> {date}: {title}'`)
+- **`templates`**: Array of template definitions
+
 ### Template Configuration
 
 Each template definition includes:
@@ -474,6 +535,27 @@ zk-next/
 
 3. Create ERB template file in template directory
 
+   **Important: YAML Quoting Requirements**
+   
+   When writing ERB templates, properly quote YAML values to avoid parsing errors:
+   
+   - **String values must be quoted** if they may contain special YAML characters (`:`, `#`, `[`, `]`, etc.):
+     ```yaml
+     title: "<%= title %>"
+     date: "<%= date %>"
+     ```
+   
+   - **The `config.path` field must always be quoted** since it may contain special characters:
+     ```yaml
+     config:
+         path: "<%= id %>-<%= title %>.md"
+     ```
+   
+   - **The `tags` field should NOT be quoted** since it's rendered as an inline YAML array:
+     ```yaml
+     tags: <%= tags %>
+     ```
+
 ### Adding New Commands
 
 1. Create command class in `lib/cmd/`:
@@ -525,6 +607,12 @@ zk-next/
 1. Extend `Utils.current_time_vars` to include new variables
 2. Variables are automatically available in ERB templates
 3. Variables can be used in `filename_pattern` and `subdirectory` patterns
+
+### Adding New Template Functions
+
+1. Add function to `Utils` module as a class method
+2. Make function available in ERB binding context in `AddCommand.render_template`
+3. Functions can be called from templates (e.g., `slugify` is available as `<%= slugify(title) %>`)
 
 ## Architecture Patterns
 

@@ -16,6 +16,8 @@ COMMANDS:
     add [TYPE]          Create a new note from a template
                         TYPE defaults to 'note' if not specified
                         Available types depend on configured templates
+                        Options: --title, --tags (see below)
+                        If neither --title nor --tags provided, prompts interactively
 
     init                Initialize a new notebook directory
                         Creates .zk directory and default config.yaml
@@ -27,9 +29,18 @@ OPTIONS:
     --help, -h          Show this help message
     --debug, -d         Enable debug output (shows template resolution details)
 
+ADD COMMAND OPTIONS:
+    --title, -t TITLE   Set the note title (can contain spaces)
+    --tags TAGS         Set tags as comma-separated list (e.g., "tag1, tag2, tag3")
+                        If neither --title nor --tags provided, prompts interactively
+
 EXAMPLES:
-    zkn add             Create a note using default 'note' template
-    zkn add journal     Create a note using 'journal' template
+    zkn add             Create a note using default 'note' template (prompts for title/tags)
+    zkn add journal     Create a note using 'journal' template (prompts for title/tags)
+    zkn add --title "My Note" journal
+                        Create a journal note with title "My Note" (prompts for tags)
+    zkn add --title "My Note" --tags "work, project"
+                        Create a note with title and tags (no prompts)
     zkn --debug add     Create a note with debug output
     zkn init            Initialize notebook in current directory
     zkn completion      Generate and source completion script

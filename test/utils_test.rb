@@ -161,6 +161,91 @@ class UtilsTest < Minitest::Test
     assert body # May have whitespace
   end
 
+  def test_parse_front_matter_with_inline_array_tags
+    # Test parsing front matter with tags in inline array format (as rendered by format_tags_for_yaml)
+    content = <<~EOF
+      ---
+      id: "123"
+      type: "note"
+      title: "Test Note"
+      tags: ["tag1", "tag2"]
+      ---
+      # Content
+    EOF
+    metadata, body = Utils.parse_front_matter(content)
+    assert metadata['tags'].is_a?(Array), "Tags should be an Array, got #{metadata['tags'].class}"
+    assert_equal ['tag1', 'tag2'], metadata['tags']
+    
+    # Test with empty array
+    content_empty = <<~EOF
+      ---
+      tags: []
+      ---
+      Content
+    EOF
+    metadata_empty, = Utils.parse_front_matter(content_empty)
+    assert metadata_empty['tags'].is_a?(Array)
+    assert_equal [], metadata_empty['tags']
+    
+    # Test with single tag
+    content_single = <<~EOF
+      ---
+      tags: ["tag1"]
+      ---
+      Content
+    EOF
+    metadata_single, = Utils.parse_front_matter(content_single)
+    assert metadata_single['tags'].is_a?(Array)
+    assert_equal ['tag1'], metadata_single['tags']
+  end
+
+  def test_parse_front_matter_with_quoted_config_path
+    # Test parsing front matter with config.path containing special characters (quoted)
+    content_with_colon = <<~EOF
+      ---
+      id: "123"
+      type: "note"
+      title: "Meeting: Q1 Review"
+      config:
+        path: "123-Meeting: Q1 Review.md"
+      ---
+      Content
+    EOF
+    metadata, body = Utils.parse_front_matter(content_with_colon)
+    assert_equal 'Meeting: Q1 Review', metadata['title']
+    assert_equal '123-Meeting: Q1 Review.md', metadata['config']['path']
+    
+    # Test with hash symbol
+    content_with_hash = <<~EOF
+      ---
+      id: "456"
+      type: "note"
+      title: "Note #1"
+      config:
+        path: "456-Note #1.md"
+      ---
+      Content
+    EOF
+    metadata_hash, = Utils.parse_front_matter(content_with_hash)
+    assert_equal 'Note #1', metadata_hash['title']
+    assert_equal '456-Note #1.md', metadata_hash['config']['path']
+    
+    # Test with ampersand
+    content_with_amp = <<~EOF
+      ---
+      id: "789"
+      type: "note"
+      title: "Test & Review"
+      config:
+        path: "789-Test & Review.md"
+      ---
+      Content
+    EOF
+    metadata_amp, = Utils.parse_front_matter(content_with_amp)
+    assert_equal 'Test & Review', metadata_amp['title']
+    assert_equal '789-Test & Review.md', metadata_amp['config']['path']
+  end
+
   # current_time_vars tests
   def test_current_time_vars_returns_hash
     vars = Utils.current_time_vars
@@ -195,7 +280,7 @@ class UtilsTest < Minitest::Test
   def test_current_time_vars_id_is_string
     vars = Utils.current_time_vars
     assert vars['id'].is_a?(String)
-    assert_match(/^\d+$/, vars['id'])
+    assert_match(/^[0-9a-f]{8}$/, vars['id'])  # 8-character hex ID
   end
 
   # interpolate_pattern tests
@@ -341,5 +426,110 @@ class UtilsTest < Minitest::Test
     assert_nil result # Should not find nested files
 
     FileUtils.rm_rf(notebook_path)
+  end
+
+  # slugify tests (default replacement is hyphen)
+  def test_slugify_basic_lowercase
+    assert_equal 'hello', Utils.slugify('Hello')
+    assert_equal 'world', Utils.slugify('WORLD')
+    assert_equal 'mixedcase', Utils.slugify('MiXeDcAsE')
+  end
+
+  def test_slugify_spaces_to_hyphens_default
+    assert_equal 'hello-world', Utils.slugify('hello world')
+    assert_equal 'meeting-q1-review', Utils.slugify('Meeting Q1 Review')
+    assert_equal 'multiple-spaces', Utils.slugify('multiple   spaces')
+  end
+
+  def test_slugify_special_characters_default
+    assert_equal 'meeting-q1-review', Utils.slugify('Meeting: Q1 Review')
+    assert_equal 'note-1', Utils.slugify('Note #1')
+    assert_equal 'test-review', Utils.slugify('Test & Review')
+    assert_equal 'title-important', Utils.slugify('Title [Important]')
+    assert_equal 'path-to-note', Utils.slugify('Path/To/Note')
+  end
+
+  def test_slugify_collapses_multiple_hyphens
+    assert_equal 'hello-world', Utils.slugify('hello---world')
+    assert_equal 'test', Utils.slugify('test---')
+    assert_equal 'test', Utils.slugify('---test')
+  end
+
+  def test_slugify_removes_leading_trailing_hyphens
+    assert_equal 'hello', Utils.slugify('-hello-')
+    assert_equal 'world', Utils.slugify('--world--')
+    assert_equal 'test', Utils.slugify('---test---')
+  end
+
+  def test_slugify_preserves_hyphens
+    assert_equal 'hello-world', Utils.slugify('hello-world')
+    assert_equal 'test-note-1', Utils.slugify('Test-Note-1')
+    assert_equal 'mixed-hyphens-and-underscores', Utils.slugify('Mixed-Hyphens And Underscores')
+  end
+
+  def test_slugify_preserves_underscores
+    assert_equal 'hello_world', Utils.slugify('hello_world')
+    assert_equal 'test_note_1', Utils.slugify('test_note_1')
+  end
+
+  def test_slugify_with_empty_string
+    assert_equal '', Utils.slugify('')
+    assert_equal '', Utils.slugify('   ')
+  end
+
+  def test_slugify_with_nil
+    assert_equal '', Utils.slugify(nil)
+  end
+
+  def test_slugify_with_only_special_characters
+    assert_equal '', Utils.slugify('::##&&')
+    assert_equal '', Utils.slugify('!!!')
+  end
+
+  def test_slugify_with_numbers
+    assert_equal 'note-123', Utils.slugify('Note 123')
+    assert_equal '2024-01-15', Utils.slugify('2024-01-15') # Hyphens are preserved
+    assert_equal 'id-1769504274', Utils.slugify('ID: 1769504274')
+  end
+
+  def test_slugify_with_unicode
+    # Unicode characters should be replaced with hyphens (default)
+    assert_equal 'hello-world', Utils.slugify('Hello 世界 World')
+    assert_equal 'test', Utils.slugify('Test🎉')
+  end
+
+  def test_slugify_complex_examples
+    assert_equal 'meeting-q1-review-2024', Utils.slugify('Meeting: Q1 Review (2024)')
+    assert_equal 'note-1-important', Utils.slugify('Note #1 [Important]')
+    assert_equal 'test-review-final', Utils.slugify('Test & Review - Final') # Multiple hyphens collapsed
+  end
+
+  def test_slugify_with_custom_replacement_underscore
+    assert_equal 'hello_world', Utils.slugify('hello world', replacement_char: '_')
+    assert_equal 'meeting_q1_review', Utils.slugify('Meeting: Q1 Review', replacement_char: '_')
+    assert_equal 'note_1', Utils.slugify('Note #1', replacement_char: '_')
+  end
+
+  def test_slugify_with_custom_replacement_empty
+    assert_equal 'helloworld', Utils.slugify('hello world', replacement_char: '')
+    assert_equal 'meetingq1review', Utils.slugify('Meeting: Q1 Review', replacement_char: '')
+  end
+
+  def test_slugify_with_custom_replacement_other_char
+    assert_equal 'hello.world', Utils.slugify('hello world', replacement_char: '.')
+    assert_equal 'meeting.q1.review', Utils.slugify('Meeting: Q1 Review', replacement_char: '.')
+  end
+
+  def test_current_time_vars_with_custom_date_format
+    vars = Utils.current_time_vars(date_format: '%m/%d/%Y')
+    assert_match(/^\d{2}\/\d{2}\/\d{4}$/, vars['date'])
+    
+    vars2 = Utils.current_time_vars(date_format: '%d-%m-%Y')
+    assert_match(/^\d{2}-\d{2}-\d{4}$/, vars2['date'])
+  end
+
+  def test_current_time_vars_with_default_date_format
+    vars = Utils.current_time_vars
+    assert_match(/^\d{4}-\d{2}-\d{2}$/, vars['date'])
   end
 end

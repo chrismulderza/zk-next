@@ -30,13 +30,15 @@ module Utils
     [metadata, content_without]
   end
 
-  def self.current_time_vars
+  def self.current_time_vars(date_format: nil)
+    require_relative 'config'
     now = Time.now
+    format = date_format || Config.default_date_format
     {
-      'date' => now.strftime('%Y-%m-%d'),
+      'date' => now.strftime(format),
       'year' => now.strftime('%Y'),
       'month' => now.strftime('%m'),
-      'id' => now.to_i.to_s
+      'id' => Utils.generate_id
     }
   end
 
@@ -71,6 +73,27 @@ module Utils
   end
 
   def self.generate_id
-    SecureRandom.hex(3)
+    SecureRandom.hex(4)  # 8-character hex ID
+  end
+
+  def self.slugify(text, replacement_char: '-')
+    return '' if text.nil? || text.to_s.empty?
+
+    result = text.to_s.downcase
+        .gsub(/[^a-z0-9\-_]/, replacement_char)  # Use replacement_char instead of underscore
+        .gsub(/\s+/, replacement_char)            # Replace spaces with replacement_char
+    
+    # Handle empty replacement_char (remove characters)
+    if replacement_char.empty?
+      result = result.gsub(/[^a-z0-9]/, '')  # Remove all non-alphanumeric
+    else
+      # Escape the replacement character for use in regex
+      escaped_char = Regexp.escape(replacement_char)
+      result = result
+          .gsub(/#{escaped_char}+/, replacement_char)  # Collapse multiple replacement chars
+          .gsub(/^#{escaped_char}+|#{escaped_char}+$/, '')  # Remove leading/trailing replacement chars
+    end
+    
+    result
   end
 end

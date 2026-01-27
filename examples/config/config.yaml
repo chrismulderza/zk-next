@@ -4,6 +4,21 @@
 # Path to your Zettelkasten notebook directory
 notebook_path: ~/Documents/notes
 
+# Date format (Ruby strftime format)
+# Default: '%Y-%m-%d' (ISO 8601)
+date_format: '%Y-%m-%d'
+
+# Slugify replacement character
+# Default: '-' (hyphen)
+# Options: '-', '_', or '' (empty string to remove)
+slugify_replacement: '-'
+
+# Alias pattern for generating note aliases
+# Default: '{type}> {date}: {title}' (e.g., "note> 2024-01-15: Meeting Notes")
+# Supports variable interpolation: {type}, {date}, {title}, {year}, {month}, {id}
+# Useful for searching with tools like fzf or grep
+alias_pattern: '{type}> {date}: {title}'
+
 # Template definitions
 # Each template has:
 #   - type: identifier for the template

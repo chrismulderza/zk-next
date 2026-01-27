@@ -105,8 +105,12 @@
   mkdir -p "$HOME/.config/zk-next/templates"
   cat > "$HOME/.config/zk-next/templates/note.erb" << 'EOF'
 ---
-id: <%= id %>
-type: note
+id: "<%= id %>"
+type: "note"
+date: "<%= date %>"
+title: "<%= title %>"
+aliases: "<%= aliases %>"
+tags: <%= tags %>
 ---
 # <%= type %>
 Content
@@ -120,7 +124,7 @@ templates:
   filename_pattern: '{type}-{date}.md'
   subdirectory: ''
 EOF
-  run ../bin/zkn add
+  run ../bin/zkn add --title "Test Note" --tags "test"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Note created"* ]]
   [ -f *.md ]

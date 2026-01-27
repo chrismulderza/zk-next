@@ -454,4 +454,58 @@ class ConfigTest < Minitest::Test
     # Should find .zk in home
     assert_equal File.join(@temp_home, '.zk'), found
   end
+
+  def test_default_date_format
+    assert_equal '%Y-%m-%d', Config.default_date_format
+  end
+
+  def test_default_slugify_replacement
+    assert_equal '-', Config.default_slugify_replacement
+  end
+
+  def test_get_date_format_with_config
+    config = { 'date_format' => '%m/%d/%Y' }
+    assert_equal '%m/%d/%Y', Config.get_date_format(config)
+  end
+
+  def test_get_date_format_without_config
+    config = {}
+    assert_equal Config.default_date_format, Config.get_date_format(config)
+  end
+
+  def test_get_slugify_replacement_with_config
+    config = { 'slugify_replacement' => '_' }
+    assert_equal '_', Config.get_slugify_replacement(config)
+  end
+
+  def test_get_slugify_replacement_without_config
+    config = {}
+    assert_equal Config.default_slugify_replacement, Config.get_slugify_replacement(config)
+  end
+
+  def test_get_date_format_with_nil_config
+    assert_equal Config.default_date_format, Config.get_date_format(nil)
+  end
+
+  def test_get_slugify_replacement_with_nil_config
+    assert_equal Config.default_slugify_replacement, Config.get_slugify_replacement(nil)
+  end
+
+  def test_default_alias_pattern
+    assert_equal '{type}> {date}: {title}', Config.default_alias_pattern
+  end
+
+  def test_get_alias_pattern_with_config
+    config = { 'alias_pattern' => '{type} - {title}' }
+    assert_equal '{type} - {title}', Config.get_alias_pattern(config)
+  end
+
+  def test_get_alias_pattern_without_config
+    config = {}
+    assert_equal Config.default_alias_pattern, Config.get_alias_pattern(config)
+  end
+
+  def test_get_alias_pattern_with_nil_config
+    assert_equal Config.default_alias_pattern, Config.get_alias_pattern(nil)
+  end
 end

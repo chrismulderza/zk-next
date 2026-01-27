@@ -52,6 +52,84 @@ Note: `Journal` and `Meeting` classes currently exist but are stubs with no spec
 Template files are developed using Embedded Ruby (ERB), allowing for
 placeholders to be replaced in the YAML front matter, and the body of the note.
 
+**YAML Quoting Requirements:**
+
+When writing ERB templates, it's important to properly quote YAML values to avoid parsing errors:
+
+1. **String values must be quoted** if they may contain special YAML characters (`:`, `#`, `[`, `]`, etc.):
+   ```yaml
+   title: "<%= title %>"
+   date: "<%= date %>"
+   aliases: "<%= aliases %>"
+   ```
+
+2. **The `config.path` field must always be quoted** since it may contain special characters from interpolated variables:
+   ```yaml
+   config:
+       path: "<%= id %>-<%= title %>.md"
+   ```
+
+3. **The `tags` field should NOT be quoted** since it's rendered as an inline YAML array:
+   ```yaml
+   tags: <%= tags %>
+   ```
+   The `tags` variable is automatically formatted as `["tag1", "tag2"]` by the add command.
+
+**Filename Normalization with `slugify`:**
+
+Templates can use the `slugify` function to normalize strings for use in filenames. The `slugify` function:
+- Converts text to lowercase
+- Replaces spaces and special characters with the configured replacement character (default: `-` hyphen)
+- Collapses multiple consecutive replacement characters
+- Removes leading/trailing replacement characters
+- Preserves hyphens and existing underscores
+
+The replacement character can be configured in `config.yaml`:
+```yaml
+slugify_replacement: '-'  # Options: '-', '_', or '' (empty string to remove)
+```
+
+Example usage in `config.path`:
+```yaml
+config:
+    path: "<%= slugify(id) %>-<%= slugify(title) %>.md"
+```
+
+This ensures filenames are filesystem-friendly and URL-safe, even when titles contain special characters like colons, hashes, or spaces.
+
+**Date Format Configuration:**
+
+The date format used in templates can be configured using Ruby's `strftime` format:
+```yaml
+date_format: '%Y-%m-%d'  # Default: ISO 8601 format
+```
+
+This affects the `date` variable available in templates. Common formats:
+- `'%Y-%m-%d'` - ISO 8601 (2024-01-15) - default
+- `'%m/%d/%Y'` - US format (01/15/2024)
+- `'%d-%m-%Y'` - European format (15-01-2024)
+
+**Alias Pattern Configuration:**
+
+Aliases are automatically generated for each note using a configurable pattern. This is useful for searching with tools like `fzf` or `grep`:
+```yaml
+alias_pattern: '{type}> {date}: {title}'  # Default format
+```
+
+The pattern supports variable interpolation using `{variable}` syntax:
+- `{type}` - Note type (e.g., "note", "journal", "meeting")
+- `{date}` - Formatted date (uses `date_format` configuration)
+- `{title}` - Note title
+- `{year}` - 4-digit year
+- `{month}` - 2-digit month
+- `{id}` - Note ID (8-character hexadecimal)
+
+Example: With default pattern `'{type}> {date}: {title}'`, a note created on 2024-01-15 with title "Meeting Notes" would have alias: `"note> 2024-01-15: Meeting Notes"`
+
+This makes it easy to search for notes using tools like:
+- `grep "note>" *.md` - Find all notes
+- `fzf` - Interactive search with alias pattern
+
 Templates can include a special `config` attribute in the front matter to override
 the default filename pattern. The `config.path` attribute specifies a custom filepath
 pattern that will be used when creating notes of that type. The `config` attribute is
@@ -60,11 +138,13 @@ automatically removed from the final note file.
 Example template with config.path:
 ```yaml
 ---
-id: <%= id %>
+id: "<%= id %>"
 type: journal
-date: <%= date %>
+date: "<%= date %>"
+title: "<%= title %>"
+tags: <%= tags %>
 config:
-    path: journal/<%= date %>.md
+    path: "journal/<%= date %>.md"
 ---
 ```
 

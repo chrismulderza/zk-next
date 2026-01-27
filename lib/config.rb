@@ -199,4 +199,31 @@ class Config
       'subdirectory' => template['subdirectory'] || ''
     }
   end
+
+  def self.default_date_format
+    '%Y-%m-%d' # ISO 8601 format
+  end
+
+  def self.default_slugify_replacement
+    '-' # Hyphen as default replacement
+  end
+
+  def self.get_date_format(config)
+    return default_date_format if config.nil?
+    config['date_format'] || default_date_format
+  end
+
+  def self.get_slugify_replacement(config)
+    return default_slugify_replacement if config.nil?
+    config['slugify_replacement'] || default_slugify_replacement
+  end
+
+  def self.default_alias_pattern
+    '{type}> {date}: {title}' # Format: "note> 2024-01-15: Title"
+  end
+
+  def self.get_alias_pattern(config)
+    return default_alias_pattern if config.nil?
+    config['alias_pattern'] || default_alias_pattern
+  end
 end

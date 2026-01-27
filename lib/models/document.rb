@@ -33,6 +33,6 @@ class Document
   end
 
   def self.generate_id
-    SecureRandom.hex(ZK_DEFAULT_ID_LENGTH / 2)
+    Utils.generate_id
   end
 end

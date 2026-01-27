@@ -19,12 +19,31 @@ class AddCommand
   def run(*args)
     return output_completion if args.first == '--completion'
 
-    type = args.first || 'note'
+    type, title, tags, title_provided, tags_provided = parse_args(args)
     debug_print("Type: #{type}")
+
+    # Prompt for missing values only if they were not explicitly provided
+    # Empty strings are treated as "explicitly provided but empty" (no prompt)
+    if !title_provided && !tags_provided
+      # Neither provided, prompt for both
+      title, tags = prompt_interactive
+    elsif !title_provided
+      # Only tags provided, prompt for title
+      title = prompt_title
+    elsif !tags_provided
+      # Only title provided, prompt for tags
+      tags = prompt_tags
+    end
+
+    # Use defaults if still nil
+    title ||= ''
+    tags = parse_tags(tags) if tags.is_a?(String)
+    tags ||= []
+
     config = Config.load(debug: @debug)
     template_config = get_template_config(config, type)
     template_file = find_template_file(config['notebook_path'], template_config['template_file'])
-    content = render_template(template_file, type)
+    content = render_template(template_file, type, title: title, tags: tags, config: config)
     filepath = create_note_file(config, template_config, type, content)
     index_note(config, filepath)
     puts "Note created: #{filepath}"
@@ -36,6 +55,91 @@ class AddCommand
     return unless @debug
 
     $stderr.puts("[DEBUG] #{message}")
+  end
+
+  def parse_args(args)
+    title = nil
+    tags = nil
+    type = nil
+    title_provided = false
+    tags_provided = false
+
+    i = 0
+    while i < args.length
+      case args[i]
+      when '--title', '-t'
+        title_provided = true
+        # Get value if it exists
+        if i + 1 < args.length
+          value = args[i + 1]
+          title = value unless value.to_s.strip.empty?
+        end
+        i += 2
+      when '--tags'
+        tags_provided = true
+        # Get value if it exists
+        if i + 1 < args.length
+          value = args[i + 1]
+          tags = value unless value.to_s.strip.empty?
+        end
+        i += 2
+      else
+        # First non-flag argument is the type
+        if type.nil? && !args[i].start_with?('--')
+          type = args[i]
+        end
+        i += 1
+      end
+    end
+
+    # Default to 'note' if no type argument was provided
+    type ||= 'note'
+
+    # Return flags indicating whether arguments were explicitly provided
+    # This allows distinguishing between "not provided" (should prompt) and "provided as empty" (should not prompt)
+    [type, title, tags, title_provided, tags_provided]
+  end
+
+  def parse_tags(tags_string)
+    return [] if tags_string.nil? || tags_string.strip.empty?
+
+    tags_string.split(',')
+               .map(&:strip)
+               .reject(&:empty?)
+  end
+
+  def prompt_interactive
+    title = prompt_title
+    tags = prompt_tags
+    [title, tags]
+  end
+
+  def prompt_title
+    if system('command -v gum > /dev/null 2>&1')
+      `gum input --placeholder "Enter note title"`.strip
+    else
+      print 'Enter note title: '
+      $stdin.gets.chomp
+    end
+  end
+
+  def prompt_tags
+    if system('command -v gum > /dev/null 2>&1')
+      input = `gum input --placeholder "Enter tags (comma-separated)"`.strip
+      parse_tags(input)
+    else
+      print 'Enter tags (comma-separated): '
+      input = $stdin.gets.chomp
+      parse_tags(input)
+    end
+  end
+
+  def format_tags_for_yaml(tags)
+    return '[]' if tags.nil? || tags.empty?
+
+    # Return inline array format that can be inserted directly into YAML
+    # Escape quotes in tag values
+    "[#{tags.map { |t| "\"#{t.to_s.gsub('"', '\\"')}\"" }.join(', ')}]"
   end
 
   def output_completion
@@ -93,11 +197,29 @@ class AddCommand
     template_file
   end
 
-  def render_template(template_file, type)
+  def render_template(template_file, type, title: '', tags: [], config: nil)
     template = ERB.new(File.read(template_file))
-    vars = Utils.current_time_vars
+    date_format = config ? Config.get_date_format(config) : Config.default_date_format
+    vars = Utils.current_time_vars(date_format: date_format)
     vars['type'] = type
-    template.result(OpenStruct.new(vars).instance_eval { binding })
+    vars['title'] = title
+    formatted_tags = format_tags_for_yaml(tags)
+    vars['tags'] = formatted_tags
+    # Generate alias using configured pattern
+    alias_pattern = config ? Config.get_alias_pattern(config) : Config.default_alias_pattern
+    vars['aliases'] = Utils.interpolate_pattern(alias_pattern, vars)
+    # Provide default values for template variables to prevent undefined variable errors
+    vars['content'] ||= ''
+    # Create binding context with slugify available
+    context = OpenStruct.new(vars)
+    replacement_char = config ? Config.get_slugify_replacement(config) : Config.default_slugify_replacement
+    context.define_singleton_method(:slugify) { |text| Utils.slugify(text, replacement_char: replacement_char) }
+    begin
+      result = template.result(context.instance_eval { binding })
+      result
+    rescue SyntaxError => e
+      raise
+    end
   end
 
   def create_note_file(config, template_config, type, content)
@@ -142,7 +264,8 @@ class AddCommand
 
   def reconstruct_content(metadata, body)
     # Construct YAML front matter
-    front_matter_yaml = metadata.to_yaml
+    # Strip leading --- delimiter since to_yaml already includes it
+    front_matter_yaml = metadata.to_yaml.sub(/^---\n/, '')
 
     # Parse body to ensure it's valid markdown (validates structure)
     body_doc = Commonmarker.parse(body)

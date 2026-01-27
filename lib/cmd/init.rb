@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'yaml'
+require_relative '../config'
 
 # Init command for initializing a new notebook
 class InitCommand
@@ -17,6 +18,9 @@ class InitCommand
     else
       config = {
         'notebook_path' => Dir.pwd,
+        'date_format' => Config.default_date_format,
+        'slugify_replacement' => Config.default_slugify_replacement,
+        'alias_pattern' => Config.default_alias_pattern,
         'templates' => [
           {
             'type' => 'note',
