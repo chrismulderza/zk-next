@@ -5,7 +5,7 @@ Next generation Zettlekasten tool set.
 ## Project overview and structure
 
 `zk-next` is a collection of CLI tools to manage a `Zettelkasten` style note
-management system. All notes are created using Github flavoured Markdown. Notes
+management system. All notes are created using CommonMark Markdown. Notes
 can have YAML front matter to provide metadata.
 
 The primary function of `zk-next` is to provide a templating system for creating
@@ -21,8 +21,12 @@ stored in a directory named `zk-next` under the default XDG configuration direct
 `$HOME/.config`.
 
 The configuration contains the path to the user's default Zettel notebook store,
-and the names of the default templates available. Default template files are
-stored in `$HOME/.config/zk-next/templates`.
+and the names of the default templates available. Template files are searched in
+two locations (in order):
+1. Local templates: `.zk/templates/` (within the notebook directory)
+2. Global templates: `$HOME/.config/zk-next/templates/`
+
+This allows notebook-specific templates to override global defaults.
 
 ### Model
 
@@ -32,13 +36,16 @@ Base Type: Document
 Attributes: - id: - title: - type: - path: - date:
 
 - Document Types:
-  - Note:
-  - Journal:
-  - Resource
+  - **Note**: Base note class (implemented, extends Document)
+  - **Journal**: Journal entry class (implemented as stub, extends Note)
+  - **Meeting**: Meeting notes class (implemented as stub, extends Note)
+  - **Resource** (planned, not implemented)
     - Bookmark
     - Guide
-  - Contact
-  - Task
+  - **Contact** (planned, not implemented)
+  - **Task** (planned, not implemented)
+
+Note: `Journal` and `Meeting` classes currently exist but are stubs with no specialized functionality beyond the base `Note` class.
 
 ### Template files
 
@@ -72,6 +79,10 @@ The indexer uses SQLite FTS5 (Full-Text Search) to enable fast full-text
 searching across note titles, filenames, and body content. The FTS index is
 automatically maintained through database triggers, ensuring search results
 stay synchronized with note updates.
+
+**Note**: While the FTS5 indexing infrastructure is in place, there is
+currently no CLI command to query or search the index. The indexing system is
+prepared for future search functionality.
 
 ### Components
 

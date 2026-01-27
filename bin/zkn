@@ -4,9 +4,52 @@
 
 DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
+# Show help information
+show_help() {
+  cat << 'EOF'
+zk-next - Zettelkasten note management tool
+
+USAGE:
+    zkn [--help] <command> [arguments]
+
+COMMANDS:
+    add [TYPE]          Create a new note from a template
+                        TYPE defaults to 'note' if not specified
+                        Available types depend on configured templates
+
+    init                Initialize a new notebook directory
+                        Creates .zk directory and default config.yaml
+
+    completion          Generate bash completion script
+    _completion         Alias for 'completion' command
+
+OPTIONS:
+    --help, -h          Show this help message
+
+EXAMPLES:
+    zkn add             Create a note using default 'note' template
+    zkn add journal     Create a note using 'journal' template
+    zkn init            Initialize notebook in current directory
+    zkn completion      Generate and source completion script
+
+SHELL COMPLETION:
+    To enable bash completion:
+        source <(zkn completion)
+
+    Or add to ~/.bashrc or ~/.zshrc:
+        source <(zkn completion)
+EOF
+}
+
 COMMAND=$1
 
 shift
+
+# Handle --help before command processing
+if [ -z "$COMMAND" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ]; then
+  show_help
+  exit 0
+fi
 
 case $COMMAND in
   _completion|completion)
@@ -53,15 +96,24 @@ case $COMMAND in
     echo "complete -F _zkn zkn"
     ;;
   add)
+    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+      show_help
+      exit 0
+    fi
     echo "running ruby $DIR/../lib/cmd/add.rb $@"
     ruby "$DIR/../lib/cmd/add.rb" "$@"
     ;;
   init)
+    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+      show_help
+      exit 0
+    fi
     ruby "$DIR/../lib/cmd/init.rb" "$@"
     ;;
   *)
     echo "Usage: zkn <command> [options]"
-    echo "Commands: add, init"
+    echo "Commands: add, init, completion"
+    echo "Run 'zkn --help' for more information."
     exit 1
     ;;
 esac

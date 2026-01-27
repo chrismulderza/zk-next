@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- Enhanced CLI help system: added `--help` and `-h` flags support for all commands
+- Comprehensive test coverage for `bin/zkn`: added help system tests, completion command tests, and improved error handling tests
+- Updated AGENTS.md with help system requirements and guidelines for new commands
+- Improved README.md: clarified CommonMark usage and template search order documentation
+- Fixed test/zk.bats: corrected no-args behavior test and added tests through shell wrapper
+
 ## 0.2.1
 
 - Added template `config.path` override feature for custom file paths

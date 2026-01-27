@@ -8,7 +8,7 @@ Quick reference for AI coding agents working in this repository.
 - **Single test file with test method:** `ruby -Ilib test/cmd/add_test.rb -n test_run_creates_note`
 - **Shell tests:** `bats test/zk.bats`
 - **Ruby lint:** `rubocop lib/`
-- **Bash lint:** `shellcheck bin/zk`
+- **Bash lint:** `shellcheck bin/zkn`
 
 ### Test Target Maintenance
 
@@ -67,6 +67,49 @@ See [ARCHITECTURE.md](ARCHITECTURE.md#architecture-documentation-maintenance) fo
 - Use external tools: gum, fzf, ripgrep, bat, sqlite
 - Update architecture documentation when making architectural changes
 
+## Help System Requirements
+
+The CLI provides a comprehensive help system via the `--help` or `-h` flags. All commands should support these flags.
+
+### Help Implementation
+
+- **Top-level help**: `zkn --help` or `zkn -h` displays general usage and all available commands
+- **Command-specific help**: `zkn <command> --help` or `zkn <command> -h` displays help (currently shows general help; commands can implement custom help)
+- **Help function**: The `show_help()` function in `bin/zkn` contains the help text and should be updated when adding new commands
+
+### Help Requirements for New Commands
+
+When adding a new command:
+
+1. **Update `show_help()` function** in `bin/zkn`:
+   - Add the new command to the COMMANDS section with description
+   - Add usage examples if appropriate
+   - Ensure the command is listed in the correct order
+
+2. **Add `--help` handling** in command route:
+   ```bash
+   commandname)
+     if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+       show_help
+       exit 0
+     fi
+     ruby "$DIR/../lib/cmd/commandname.rb" "$@"
+     ;;
+   ```
+
+3. **Optional: Command-specific help**:
+   - Commands can implement custom help by handling `--help` in their Ruby code
+   - If not implemented, the command will show general help
+   - Custom help should follow the same format as general help for consistency
+
+### Help Content Guidelines
+
+- Help text should be clear and concise
+- Include usage syntax for each command
+- Provide examples for common use cases
+- Keep formatting consistent with existing help output
+- Use heredoc (`cat << 'EOF'`) for multi-line help text in shell functions
+
 ## Adding New Commands
 
 When adding a new command to `lib/cmd/`, follow this checklist:
@@ -79,11 +122,20 @@ When adding a new command to `lib/cmd/`, follow this checklist:
 2. **Add route in `bin/zkn`**:
    ```bash
    commandname)
+     if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+       show_help
+       exit 0
+     fi
      ruby "$DIR/../lib/cmd/commandname.rb" "$@"
      ;;
    ```
 
-3. **Implement completion** (REQUIRED):
+3. **Update help function** (REQUIRED):
+   - Add the new command to the `show_help()` function in `bin/zkn`
+   - Include command description and usage examples
+   - See [Help System Requirements](#help-system-requirements) for details
+
+4. **Implement completion** (REQUIRED):
    - Add `--completion` option handling in `run` method:
      ```ruby
      def run(*args)
@@ -105,12 +157,12 @@ When adding a new command to `lib/cmd/`, follow this checklist:
    - Commands automatically appear in shell completion
    - No bash script changes needed - completion is dynamically discovered
 
-4. **Add tests**: `test/cmd/{command_name}_test.rb`
+5. **Add tests**: `test/cmd/{command_name}_test.rb`
    - Test files are automatically discovered by `make test` (no Makefile update needed)
    - Follow naming convention: `*_test.rb`
    - Use Minitest framework
 
-5. **Update documentation**: See [ARCHITECTURE.md](ARCHITECTURE.md#adding-new-commands) for details
+6. **Update documentation**: See [ARCHITECTURE.md](ARCHITECTURE.md#adding-new-commands) for details
 
 **Completion Requirements**:
 - All commands MUST implement `--completion` option
