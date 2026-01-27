@@ -48,12 +48,24 @@ module Utils
     result
   end
 
-  def self.find_template_file(notebook_path, template_filename)
+  def self.find_template_file(notebook_path, template_filename, debug: false)
+    debug_print = ->(msg) { $stderr.puts("[DEBUG] #{msg}") if debug }
+    
     local_file = File.join(notebook_path, '.zk', 'templates', template_filename)
-    return local_file if File.exist?(local_file)
+    debug_print.call("Local path: #{local_file}")
+    if File.exist?(local_file)
+      debug_print.call("Local template file found")
+      return local_file
+    end
+    debug_print.call("Local template file not found")
 
     global_file = File.join(ENV['HOME'], '.config', 'zk-next', 'templates', template_filename)
-    return global_file if File.exist?(global_file)
+    debug_print.call("Global path: #{global_file}")
+    if File.exist?(global_file)
+      debug_print.call("Global template file found")
+      return global_file
+    end
+    debug_print.call("Global template file not found")
 
     nil
   end

@@ -12,11 +12,16 @@ require 'commonmarker'
 
 # Add command for creating new notes
 class AddCommand
+  def initialize
+    @debug = ENV['ZKN_DEBUG'] == '1'
+  end
+
   def run(*args)
     return output_completion if args.first == '--completion'
 
     type = args.first || 'note'
-    config = Config.load
+    debug_print("Type: #{type}")
+    config = Config.load(debug: @debug)
     template_config = get_template_config(config, type)
     template_file = find_template_file(config['notebook_path'], template_config['template_file'])
     content = render_template(template_file, type)
@@ -27,30 +32,54 @@ class AddCommand
 
   private
 
+  def debug_print(message)
+    return unless @debug
+
+    $stderr.puts("[DEBUG] #{message}")
+  end
+
   def output_completion
     begin
-      config = Config.load
+      config = Config.load(debug: @debug)
       templates = config['templates'] || []
+      debug_print("Completion: templates array size: #{templates.size}")
       return unless templates.is_a?(Array)
 
       template_types = templates.map { |t| t['type'] }.compact.uniq.sort
+      debug_print("Completion: available template types: #{template_types.join(', ')}")
       puts template_types.join(' ')
-    rescue StandardError
+    rescue StandardError => e
+      debug_print("Completion: error loading config: #{e.message}")
       # Fallback to default if config can't be loaded
       puts 'note'
     end
   end
 
   def get_template_config(config, type)
-    template_config = Config.get_template(config, type)
-    return template_config if template_config
+    templates = config['templates'] || []
+    debug_print("Searching for template type: #{type}")
+    
+    if templates.is_a?(Array)
+      available_types = templates.map { |t| t['type'] }.compact.uniq.sort
+      debug_print("Available template types: #{available_types.join(', ')}")
+    else
+      debug_print("Templates is not an array: #{templates.class}")
+    end
+    
+    template_config = Config.get_template(config, type, debug: @debug)
+    if template_config
+      debug_print("Template config found: #{template_config.inspect}")
+      return template_config
+    end
 
+    debug_print("Template config not found for type: #{type}")
     puts "Template not found: #{type}"
     exit 1
   end
 
   def find_template_file(notebook_path, template_filename) # rubocop:disable Metrics/MethodLength
-    template_file = Utils.find_template_file(notebook_path, template_filename)
+    debug_print("Searching template file: #{template_filename}")
+    template_file = Utils.find_template_file(notebook_path, template_filename, debug: @debug)
     unless template_file
       local_file = File.join(notebook_path, '.zk', 'templates', template_filename)
       global_file = File.join(Dir.home, '.config', 'zk-next', 'templates', template_filename)
@@ -60,6 +89,7 @@ class AddCommand
       puts "  #{global_file}"
       exit 1
     end
+    debug_print("Template file found: #{template_file}")
     template_file
   end
 

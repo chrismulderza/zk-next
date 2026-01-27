@@ -106,7 +106,7 @@
   cat > "$HOME/.config/zk-next/templates/note.erb" << 'EOF'
 ---
 id: <%= id %>
-type: default
+type: note
 ---
 # <%= type %>
 Content
@@ -115,12 +115,12 @@ EOF
 ---
 notebook_path: "."
 templates:
-- type: default
+- type: note
   template_file: note.erb
   filename_pattern: '{type}-{date}.md'
   subdirectory: ''
 EOF
-  run ../bin/zkn add default
+  run ../bin/zkn add
   [ "$status" -eq 0 ]
   [[ "$output" == *"Note created"* ]]
   [ -f *.md ]
