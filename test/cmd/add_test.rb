@@ -43,7 +43,7 @@ class AddCommandTest < Minitest::Test
         # <%= type %>
         Content
       ERB
-      File.write(File.join(template_dir, 'default.erb'), template_content)
+      File.write(File.join(template_dir, 'note.erb'), template_content)
     end
   end
 
@@ -426,7 +426,7 @@ class AddCommandTest < Minitest::Test
       config['templates'] = [
         {
           'type' => 'note',
-          'template_file' => 'default.erb',
+          'template_file' => 'note.erb',
           'filename_pattern' => '{type}-{date}.md',
           'subdirectory' => ''
         }
@@ -444,7 +444,7 @@ class AddCommandTest < Minitest::Test
         # Note
         Content
       ERB
-      File.write(File.join(template_dir, 'default.erb'), template_content)
+      File.write(File.join(template_dir, 'note.erb'), template_content)
 
       AddCommand.new.run
       files = Dir.glob('*.md')

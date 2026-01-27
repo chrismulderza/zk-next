@@ -103,7 +103,7 @@
   rm .zk/config.yaml
   export HOME="$PWD/home"
   mkdir -p "$HOME/.config/zk-next/templates"
-  cat > "$HOME/.config/zk-next/templates/default.erb" << 'EOF'
+  cat > "$HOME/.config/zk-next/templates/note.erb" << 'EOF'
 ---
 id: <%= id %>
 type: default
@@ -116,7 +116,7 @@ EOF
 notebook_path: "."
 templates:
 - type: default
-  template_file: default.erb
+  template_file: note.erb
   filename_pattern: '{type}-{date}.md'
   subdirectory: ''
 EOF

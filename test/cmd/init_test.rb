@@ -50,7 +50,7 @@ class InitCommandTest < Minitest::Test
         template = config['templates'].first
         assert template.is_a?(Hash)
         assert_equal 'note', template['type']
-        assert_equal 'default.erb', template['template_file']
+        assert_equal 'note.erb', template['template_file']
         assert_equal '{type}-{date}.md', template['filename_pattern']
         assert_equal '', template['subdirectory']
       end

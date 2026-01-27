@@ -36,7 +36,7 @@ install:
 	@if [ ! -d "$(HOME)/.config/zk-next" ]; then \
 		mkdir -p $(HOME)/.config/zk-next/templates; \
 		cp examples/config/config.yaml $(HOME)/.config/zk-next/; \
-		cp lib/defaults/default.erb $(HOME)/.config/zk-next/templates/default.erb; \
+		cp lib/templates/note.erb $(HOME)/.config/zk-next/templates/note.erb; \
 		echo "Config and templates installed to $(HOME)/.config/zk-next"; \
 	else \
 		echo "Config directory $(HOME)/.config/zk-next already exists, skipping config installation"; \

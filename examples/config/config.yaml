@@ -12,7 +12,7 @@ notebook_path: ~/Documents/notes
 #   - subdirectory: relative path from notebook_path where notes will be created (supports same patterns as filename_pattern)
 templates:
   - type: default
-    template_file: default.erb
+    template_file: note.erb
     filename_pattern: "{type}-{date}.md"
     subdirectory: ""
 

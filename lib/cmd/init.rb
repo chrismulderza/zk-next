@@ -20,7 +20,7 @@ class InitCommand
         'templates' => [
           {
             'type' => 'note',
-            'template_file' => 'default.erb',
+            'template_file' => 'note.erb',
             'filename_pattern' => '{type}-{date}.md',
             'subdirectory' => ''
           }

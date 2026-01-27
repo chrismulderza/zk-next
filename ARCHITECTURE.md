@@ -222,7 +222,7 @@ The path supports variable interpolation using metadata fields and time variable
 notebook_path: ~/Documents/notes
 templates:
   - type: note
-    template_file: default.erb
+    template_file: note.erb
     filename_pattern: "{type}-{date}.md"
     subdirectory: ""
 ```
@@ -415,7 +415,7 @@ zk-next/
 │   ├── utils.rb              # Utility functions
 │   ├── defaults.rb           # Default configuration (unused)
 │   └── templates/
-│       └── default.erb       # Default template
+│       └── note.erb       # Default template
 ├── test/                      # Test suite
 │   ├── cmd/                  # Command tests
 │   ├── models/               # Model tests
